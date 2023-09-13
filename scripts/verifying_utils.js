@@ -7,11 +7,26 @@
 const hre = require("hardhat");
 
 async function main() {
-  const lockContract = hre.ethers.Contract(
-    "0x5E1cc70f09EBe454eee8d8E7110B86e40f9fcA02",
-    ["function withdraw() public"]
+  const abi = new hre.ethers.Interface([
+    {
+      inputs: [
+        {
+          internalType: "address",
+          name: "anOwner",
+          type: "address",
+        },
+      ],
+      name: "initialize",
+      outputs: [],
+      stateMutability: "nonpayable",
+      type: "function",
+    },
+  ]);
+  console.log(
+    abi.encodeFunctionData("initialize", [
+      "0x4bBa290826C253BD854121346c370a9886d1bC26",
+    ])
   );
-  await
 }
 
 // We recommend this pattern to be able to use async/await everywhere

@@ -13,7 +13,17 @@
     "hardhat": "^2.17.2"
   },
   "dependencies": {
+    "@account-abstraction/contracts": "^0.6.0",
+    "@alchemy/aa-core": "^0.1.0-alpha.29",
+    "@ethersproject/bignumber": "^5.7.0",
+    "@ethersproject/bytes": "^5.7.0",
     "@openzeppelin/contracts": "^4.9.3",
-    "dotenv": "^16.3.1"
+    "@zerodev/sdk": "^4.0.10",
+    "account-abstraction": "^0.2.4",
+    "dotenv": "^16.3.1",
+    "openzeppelin-contracts": "^4.0.0",
+    "openzeppelin-solidity": "^3.4.2",
+    "solady": "^0.0.118",
+    "userop": "^0.3.3"
   }
 }

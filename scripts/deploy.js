@@ -7,16 +7,10 @@
 const hre = require("hardhat");
 
 async function main() {
-  const simpleAccountFactory = await hre.ethers.deployContract(
-    "SimpleAccountFactory",
-    ["0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789"]
-  );
-
-  await simpleAccountFactory.waitForDeployment();
-
-  console.log(
-    `SimpleAccountFactory was deployed to ${simpleAccountFactory.target}`
-  );
+  let [owner] = await hre.ethers.getSigners();
+  console.log(`Working with signer: ${await owner.getAddress()}`);
+  const validator = await hre.ethers.deployContract("SubscriptionValidator");
+  console.log(`Validator deployed to: ${await validator.getAddress()}`);
 }
 
 // We recommend this pattern to be able to use async/await everywhere
