@@ -8,9 +8,16 @@ const hre = require("hardhat");
 
 async function main() {
   let [owner] = await hre.ethers.getSigners();
-  console.log(`Working with signer: ${await owner.getAddress()}`);
-  const validator = await hre.ethers.deployContract("SubscriptionValidator");
-  console.log(`Validator deployed to: ${await validator.getAddress()}`);
+  console.log(
+    `Working with signer: ${await owner.getAddress()}`
+  );
+  const validator =
+    await hre.ethers.deployContract(
+      "BeaverRouter"
+    );
+  console.log(
+    `Router deployed to: ${await validator.getAddress()}`
+  );
 }
 
 // We recommend this pattern to be able to use async/await everywhere
