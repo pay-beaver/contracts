@@ -36,6 +36,10 @@ module.exports = {
   etherscan: {
     apiKey: {
       sepolia: process.env.ETHERSCAN_API_KEY,
+      polygonMumbai:
+        process.env.POLYGON_ETHERSCAN_API_KEY,
+      basegoerli:
+        process.env.BASE_ETHERSCAN_API_KEY,
     },
   },
   solidity: {
