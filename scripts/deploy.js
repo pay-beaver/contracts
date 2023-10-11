@@ -13,7 +13,10 @@ async function main() {
   );
   const validator =
     await hre.ethers.deployContract(
-      "BeaverRouter"
+      "BeaverRouter",
+      [
+        "0x4bBa290826C253BD854121346c370a9886d1bC26",
+      ]
     );
   console.log(
     `Router deployed to: ${await validator.getAddress()}`

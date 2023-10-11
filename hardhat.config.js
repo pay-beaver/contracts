@@ -14,7 +14,7 @@ module.exports = {
       ],
     },
     mumbai: {
-      url: process.env.MUMBAI_RPC_URL,
+      url: "https://rpc.ankr.com/polygon_mumbai",
       accounts: [
         `0x${process.env.DEPLOYER_PRIVATE_KEY}`,
       ],
