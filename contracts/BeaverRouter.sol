@@ -7,8 +7,9 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 struct Subscription {
     address user;
     address merchant;
-    string merchantDomain;
-    string product;
+    bytes32 userid;
+    bytes32 merchantDomain; // encoded string
+    bytes32 product; // encoded string
     bytes32 nonce;
     address token;
     uint256 amount;
@@ -31,8 +32,9 @@ contract BeaverRouter {
         bytes32 indexed subscriptionHash,
         address indexed user,
         address indexed merchant,
-        string merchantDomain,
-        string product,
+        bytes32 userid,
+        bytes32 merchantDomain,
+        bytes32 product,
         bytes32 nonce,
         address token,
         uint256 amount,
@@ -55,8 +57,9 @@ contract BeaverRouter {
 
     function startSubscription(
         address merchant,
-        string calldata merchantDomain,
-        string calldata product,
+        bytes32 userid,
+        bytes32 merchantDomain,
+        bytes32 product,
         bytes32 nonce,
         address token,
         uint256 amount,
@@ -67,9 +70,8 @@ contract BeaverRouter {
     ) external returns (bytes32 subscriptionHash) {
         subscriptionHash = keccak256(
             abi.encodePacked(
-                block.chainid,
-                msg.sender,
                 merchant,
+                userid,
                 merchantDomain,
                 product,
                 nonce,
@@ -91,6 +93,7 @@ contract BeaverRouter {
         subscriptions[subscriptionHash] = Subscription(
             msg.sender,
             merchant,
+            userid,
             merchantDomain,
             product,
             nonce,
@@ -108,6 +111,7 @@ contract BeaverRouter {
             subscriptionHash,
             msg.sender,
             merchant,
+            userid,
             merchantDomain,
             product,
             nonce,
@@ -122,7 +126,6 @@ contract BeaverRouter {
         if (freeTrialLength == 0) this.makePayment(subscriptionHash, 0);
     }
 
-    // Anybody can call this function to execute a pending payment.
     function makePayment(
         bytes32 subscriptionHash,
         uint256 compensation
@@ -155,7 +158,7 @@ contract BeaverRouter {
         uint256 toRouter = compensation + fee;
 
         require(
-            toRouter < sub.amount,
+            toRouter < sub.amount, // prevent initiators from making the compensation too high
             "BeaverRouter: too much to send to the router"
         );
 
