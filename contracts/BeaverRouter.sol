@@ -7,10 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 struct Subscription {
     address user;
     address merchant;
-    bytes32 userid;
-    bytes32 merchantDomain; // encoded string
-    bytes32 product; // encoded string
-    bytes32 nonce;
+    string metadata;
     address token;
     uint256 amount;
     uint256 period;
@@ -23,19 +20,18 @@ struct Subscription {
 
 contract BeaverRouter {
     address _owner;
+    uint256 _fee;
 
     constructor(address owner) {
         _owner = owner;
+        _fee = (5 * (10 ** 18)) / 1000; // Initially setting to 0.5%
     }
 
     event SubscriptionStarted(
         bytes32 indexed subscriptionHash,
         address indexed user,
         address indexed merchant,
-        bytes32 userid,
-        bytes32 merchantDomain,
-        bytes32 product,
-        bytes32 nonce,
+        string metadata,
         address token,
         uint256 amount,
         uint256 period,
@@ -54,13 +50,11 @@ contract BeaverRouter {
     mapping(bytes32 => Subscription) public subscriptions;
     mapping(address => mapping(address => uint256)) txCompensations; // Compensation for gas fees spent by initiator. token address => merchant address => amount.
     mapping(address => uint256) earnedFees; // token address => amount
+    mapping(address => uint256) merchantNonce;
 
     function startSubscription(
         address merchant,
-        bytes32 userid,
-        bytes32 merchantDomain,
-        bytes32 product,
-        bytes32 nonce,
+        string calldata metadata, // subscriptionId, merchantDomain, product name and other data that is not needed to make payments.
         address token,
         uint256 amount,
         uint256 period,
@@ -68,35 +62,16 @@ contract BeaverRouter {
         uint256 paymentPeriod,
         address initiator
     ) external returns (bytes32 subscriptionHash) {
+        // Subscription hash is a unique identifier for every subscription.
         subscriptionHash = keccak256(
-            abi.encodePacked(
-                merchant,
-                userid,
-                merchantDomain,
-                product,
-                nonce,
-                token,
-                amount,
-                period,
-                freeTrialLength,
-                paymentPeriod,
-                initiator
-            )
-        );
-
-        require(
-            subscriptions[subscriptionHash].user == address(0),
-            "BeaverRouter: subscription already exists"
+            abi.encodePacked(block.chainid, merchant, merchantNonce[merchant]++)
         );
 
         uint256 start = block.timestamp + freeTrialLength;
         subscriptions[subscriptionHash] = Subscription(
             msg.sender,
             merchant,
-            userid,
-            merchantDomain,
-            product,
-            nonce,
+            metadata,
             token,
             amount,
             period,
@@ -111,10 +86,7 @@ contract BeaverRouter {
             subscriptionHash,
             msg.sender,
             merchant,
-            userid,
-            merchantDomain,
-            product,
-            nonce,
+            metadata,
             token,
             amount,
             period,
@@ -154,7 +126,7 @@ contract BeaverRouter {
             "BeaverRouter: subscription has expired"
         );
 
-        uint256 fee = (sub.amount * 5) / 1000; // the fee is 0.5%
+        uint256 fee = (sub.amount * _fee) / (10 ** 18);
         uint256 toRouter = compensation + fee;
 
         require(
@@ -233,6 +205,17 @@ contract BeaverRouter {
         );
 
         _owner = newOwner;
+
+        return true;
+    }
+
+    function changeFee(uint256 newFee) external returns (bool) {
+        require(
+            msg.sender == _owner,
+            "BeaverRouter: only owner can change the owner"
+        );
+
+        _fee = newFee;
 
         return true;
     }
