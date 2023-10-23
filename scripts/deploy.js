@@ -15,7 +15,8 @@ async function main() {
     await hre.ethers.deployContract(
       "BeaverRouter",
       [
-        "0x4bBa290826C253BD854121346c370a9886d1bC26",
+        "0x4bBa290826C253BD854121346c370a9886d1bC26", // owner
+        5000000000000000, // setting fee to 0.5%
       ]
     );
   console.log(

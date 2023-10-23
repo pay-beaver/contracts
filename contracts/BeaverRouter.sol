@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 struct Subscription {
     address user;
     address merchant;
-    string metadata;
+    bytes32 metadata; // metadata like subscriptionId, dmerchant domain, etc.
     address token;
     uint256 amount;
     uint256 period;
@@ -22,16 +22,16 @@ contract BeaverRouter {
     address _owner;
     uint256 _fee;
 
-    constructor(address owner) {
+    constructor(address owner, uint256 fee) {
         _owner = owner;
-        _fee = (5 * (10 ** 18)) / 1000; // Initially setting to 0.5%
+        _fee = fee;
     }
 
     event SubscriptionStarted(
         bytes32 indexed subscriptionHash,
         address indexed user,
         address indexed merchant,
-        string metadata,
+        bytes32 metadata,
         address token,
         uint256 amount,
         uint256 period,
@@ -54,7 +54,7 @@ contract BeaverRouter {
 
     function startSubscription(
         address merchant,
-        string calldata metadata, // subscriptionId, merchantDomain, product name and other data that is not needed to make payments.
+        bytes32 metadata,
         address token,
         uint256 amount,
         uint256 period,
