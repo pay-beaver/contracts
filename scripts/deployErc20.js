@@ -11,17 +11,25 @@ async function main() {
   console.log(
     `Working with signer: ${await owner.getAddress()}`
   );
-  const router = await hre.ethers.deployContract(
-    "BeaverRouter",
-    [
-      "0x4bBa290826C253BD854121346c370a9886d1bC26", // owner
-      "0xB38Bb847D9dC852B70d9ed539C87cF459812DA16", // default initiator
-      5000000000000000, // setting fee to 0.5%
-    ]
+  const ndCoin = await hre.ethers.deployContract(
+    "NDCoinERC20",
+    [(10 ** 20).toString()]
   );
+
   console.log(
-    `Router deployed to: ${await router.getAddress()}`
+    `NDCoin deployed to: ${await ndCoin.getAddress()}`
   );
+
+  const ndCoin = await hre.ethers.getContractAt(
+    "NDCoinERC20",
+    "0xc824Cb40e4253Ae1A7C024eFc20eD9f788645b9a",
+    owner
+  );
+
+  // ndCoin.approve(
+  //   "0xc824Cb40e4253Ae1A7C024eFc20eD9f788645b9a", // router
+  //   500000000000 // amount
+  // );
 }
 
 // We recommend this pattern to be able to use async/await everywhere

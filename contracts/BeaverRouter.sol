@@ -3,45 +3,46 @@
 pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "hardhat/console.sol";
-
-struct Product {
-    address merchant;
-    bytes32 metadata; // metadata like subscriptionId, dmerchant domain, etc.
-    address token;
-    uint256 amount;
-    uint256 period;
-    uint256 freeTrialLength;
-    uint256 paymentPeriod; // How many seconds there is to make a payment
-}
-
-struct Subscription {
-    bytes32 productHash;
-    address user;
-    uint256 start;
-    uint256 paymentsMade; // 1 - one payment has been made, 2 - two payments have been made, etc.
-    bool terminated;
-    address initiator; // who is allowed to initiate payments
-}
 
 contract BeaverRouter {
     address _owner;
+    address _defaultInitiator;
     uint256 _fee;
 
-    constructor(address owner, uint256 fee) {
+    constructor(address owner, address defaultInitiator, uint256 fee) {
         _owner = owner;
+        _defaultInitiator = defaultInitiator;
         _fee = fee;
+    }
+
+    struct Product {
+        address merchant;
+        address token;
+        uint256 amount;
+        uint256 period;
+        uint256 freeTrialLength;
+        uint256 paymentPeriod; // How many seconds there is to make a payment
+        bytes32 productMetadata; // product metadata like product name
+    }
+
+    struct Subscription {
+        bytes32 productHash;
+        address user;
+        uint256 start;
+        uint256 paymentsMade; // 1 - one payment has been made, 2 - two payments have been made, etc.
+        bool terminated;
+        bytes32 subscriptionMetadata; // subscription metadata like subscriptionId, userId
     }
 
     event ProductCreated(
         bytes32 indexed productHash,
         address indexed merchant,
-        bytes32 indexed metadata,
-        address token,
+        address indexed token,
         uint256 amount,
         uint256 period,
         uint256 freeTrialLength,
-        uint256 paymentPeriod
+        uint256 paymentPeriod,
+        bytes32 productMetadata
     );
 
     event SubscriptionStarted(
@@ -49,7 +50,7 @@ contract BeaverRouter {
         bytes32 indexed productHash,
         address indexed user,
         uint256 start,
-        address initiator
+        bytes32 subscriptionMetadata
     );
 
     event PaymentMade(
@@ -63,10 +64,10 @@ contract BeaverRouter {
     );
 
     event InitiatorChanged(
-        bytes32 indexed subscriptionHash,
+        address indexed merchant,
         address indexed newInitiator,
-        address indexed changedBy,
-        address oldInitiator
+        address indexed oldInitiator,
+        address changedBy
     );
 
     mapping(bytes32 => Product) public products;
@@ -74,10 +75,11 @@ contract BeaverRouter {
     mapping(address => mapping(address => uint256)) public txCompensations; // Compensation for gas fees spent by initiator. token address => merchant address => amount.
     mapping(address => uint256) public earnedFees; // token address => amount
     mapping(bytes32 => uint64) public productNonce; // uint64 is the same as Ethereum's nonce for transactions
+    mapping(address => address) public paymentInitiators; // Merchant address => initiator address.
 
-    function createProduct(
+    function createProductIfDoesntExist(
         address merchant,
-        bytes32 metadata,
+        bytes32 productMetadata,
         address token,
         uint256 amount,
         uint256 period,
@@ -86,8 +88,9 @@ contract BeaverRouter {
     ) external returns (bytes32 productHash) {
         productHash = keccak256(
             abi.encodePacked(
+                block.chainid,
                 merchant,
-                metadata,
+                productMetadata,
                 token,
                 amount,
                 period,
@@ -96,35 +99,36 @@ contract BeaverRouter {
             )
         );
 
+        if (products[productHash].merchant != address(0)) {
+            return productHash;
+        }
+
         products[productHash] = Product(
             merchant,
-            metadata,
             token,
             amount,
             period,
             freeTrialLength,
-            paymentPeriod
+            paymentPeriod,
+            productMetadata
         );
 
         emit ProductCreated(
             productHash,
             merchant,
-            metadata,
             token,
             amount,
             period,
             freeTrialLength,
-            paymentPeriod
+            paymentPeriod,
+            productMetadata
         );
     }
 
-    function startSubscription(
+    function _startSubscription(
         bytes32 productHash,
-        address initiator
-    ) external returns (bytes32 subscriptionHash) {
-        console.log("Sender is");
-        console.logAddress(msg.sender);
-        // Subscription hash is a unique identifier for every subscription.
+        bytes32 subscriptionMetadata
+    ) internal returns (bytes32 subscriptionHash) {
         Product storage product = products[productHash];
 
         require(
@@ -147,7 +151,7 @@ contract BeaverRouter {
             start,
             0,
             false,
-            initiator
+            subscriptionMetadata
         );
 
         emit SubscriptionStarted(
@@ -155,32 +159,50 @@ contract BeaverRouter {
             productHash,
             msg.sender,
             start,
-            initiator
+            subscriptionMetadata
         );
 
         if (product.freeTrialLength == 0) this.makePayment(subscriptionHash, 0);
     }
 
-    function createProductAndStartSubscription(
+    function startSubscription(
+        bytes32 productHash,
+        bytes32 subscriptionMetadata
+    ) external returns (bytes32 subscriptionHash) {
+        subscriptionHash = _startSubscription(
+            productHash,
+            subscriptionMetadata
+        );
+    }
+
+    function setupEnvironmentAndStartSubscription(
         address merchant,
-        bytes32 metadata,
+        bytes32 productMetadata,
         address token,
         uint256 amount,
         uint256 period,
         uint256 freeTrialLength,
         uint256 paymentPeriod,
-        address initiator
+        bytes32 subscriptionMetadata
     ) external returns (bytes32 subscriptionHash) {
-        bytes32 productHash = this.createProduct(
+        if (paymentInitiators[merchant] == address(0)) {
+            this.changeInitiator(merchant, _defaultInitiator);
+        }
+
+        bytes32 productHash = this.createProductIfDoesntExist(
             merchant,
-            metadata,
+            productMetadata,
             token,
             amount,
             period,
             freeTrialLength,
             paymentPeriod
         );
-        subscriptionHash = this.startSubscription(productHash, initiator);
+
+        subscriptionHash = _startSubscription(
+            productHash,
+            subscriptionMetadata
+        );
     }
 
     function makePayment(
@@ -189,9 +211,10 @@ contract BeaverRouter {
     ) external returns (bool) {
         Subscription storage sub = subscriptions[subscriptionHash];
         Product storage product = products[sub.productHash];
+        address initiator = paymentInitiators[product.merchant];
 
         require(
-            msg.sender == address(this) || msg.sender == sub.initiator,
+            msg.sender == address(this) || msg.sender == initiator,
             "BeaverRouter: only initiator is allowed to initiate payments"
         );
 
@@ -224,6 +247,12 @@ contract BeaverRouter {
 
         uint256 toMerchant = product.amount - toRouter;
 
+        // Very ugly, but add paymentsMade and emit an event here instead of doing it at
+        // the end of the function because otherwise Yul compiler fails with a
+        // "Variable is too deep in the stack" error. :(
+        sub.paymentsMade += 1;
+        emit PaymentMade(subscriptionHash, sub.paymentsMade);
+
         IERC20(product.token).transferFrom(
             sub.user,
             product.merchant,
@@ -231,11 +260,9 @@ contract BeaverRouter {
         );
         IERC20(product.token).transferFrom(sub.user, address(this), toRouter);
 
-        txCompensations[product.token][sub.initiator] += compensation;
+        txCompensations[product.token][initiator] += compensation;
         earnedFees[product.token] += fee;
 
-        sub.paymentsMade += 1;
-        emit PaymentMade(subscriptionHash, sub.paymentsMade);
         return true;
     }
 
@@ -256,24 +283,20 @@ contract BeaverRouter {
     }
 
     function changeInitiator(
-        bytes32 subscriptionHash,
+        address merchant,
         address newInitiator
     ) external returns (bool) {
-        Subscription storage sub = subscriptions[subscriptionHash];
-        Product storage product = products[sub.productHash];
+        address initiator = paymentInitiators[merchant];
 
         require(
-            msg.sender == sub.initiator || msg.sender == product.merchant,
+            msg.sender == initiator ||
+                msg.sender == merchant ||
+                (initiator == address(0) && newInitiator == _defaultInitiator),
             "BeaverRouter: only current initiator and merchant are allowed to change initiator."
         );
 
-        emit InitiatorChanged(
-            subscriptionHash,
-            newInitiator,
-            msg.sender,
-            sub.initiator
-        );
-        sub.initiator = newInitiator;
+        emit InitiatorChanged(merchant, newInitiator, initiator, msg.sender);
+        paymentInitiators[merchant] = newInitiator;
         return true;
     }
 
@@ -327,10 +350,23 @@ contract BeaverRouter {
     function changeFee(uint256 newFee) external returns (bool) {
         require(
             msg.sender == _owner,
-            "BeaverRouter: only owner can change the owner"
+            "BeaverRouter: only owner can change the fee"
         );
 
         _fee = newFee;
+
+        return true;
+    }
+
+    function changeDefaultInitiator(
+        address newDefaultInitiator
+    ) external returns (bool) {
+        require(
+            msg.sender == _owner,
+            "BeaverRouter: only owner can change the default initiator"
+        );
+
+        _defaultInitiator = newDefaultInitiator;
 
         return true;
     }

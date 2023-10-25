@@ -1,4 +1,5 @@
 require("@nomicfoundation/hardhat-toolbox");
+require("@nomiclabs/hardhat-web3");
 require("dotenv").config();
 
 /** @type import('hardhat/config').HardhatUserConfig */
@@ -6,6 +7,13 @@ module.exports = {
   networks: {
     hardhat: {
       chainId: 80001,
+    },
+    tenderly: {
+      url: "https://rpc.vnet.tenderly.co/devnet/beaver-router/d9f401d0-8dd3-4453-bd4e-0542404488b6",
+      accounts: [
+        `0x${process.env.DEPLOYER_PRIVATE_KEY}`,
+        `0x${process.env.RANDOM_PRIVATE_KEY}`,
+      ],
     },
     sepolia: {
       url: process.env.SEPOLIA_RPC_URL,
