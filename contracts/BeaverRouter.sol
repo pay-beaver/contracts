@@ -34,6 +34,10 @@ contract BeaverRouter {
         bytes32 subscriptionMetadata; // subscription metadata like subscriptionId, userId
     }
 
+    struct MerchantSettings {
+        address initiator;
+    }
+
     event ProductCreated(
         bytes32 indexed productHash,
         address indexed merchant,
@@ -75,7 +79,7 @@ contract BeaverRouter {
     mapping(address => mapping(address => uint256)) public txCompensations; // Compensation for gas fees spent by initiator. token address => merchant address => amount.
     mapping(address => uint256) public earnedFees; // token address => amount
     mapping(bytes32 => uint64) public productNonce; // uint64 is the same as Ethereum's nonce for transactions
-    mapping(address => address) public paymentInitiators; // Merchant address => initiator address.
+    mapping(address => MerchantSettings) public merchantSettings;
 
     function createProductIfDoesntExist(
         address merchant,
@@ -185,7 +189,7 @@ contract BeaverRouter {
         uint256 paymentPeriod,
         bytes32 subscriptionMetadata
     ) external returns (bytes32 subscriptionHash) {
-        if (paymentInitiators[merchant] == address(0)) {
+        if (merchantSettings[merchant].initiator == address(0)) {
             this.changeInitiator(merchant, _defaultInitiator);
         }
 
@@ -211,7 +215,7 @@ contract BeaverRouter {
     ) external returns (bool) {
         Subscription storage sub = subscriptions[subscriptionHash];
         Product storage product = products[sub.productHash];
-        address initiator = paymentInitiators[product.merchant];
+        address initiator = merchantSettings[product.merchant].initiator;
 
         require(
             msg.sender == address(this) || msg.sender == initiator,
@@ -286,7 +290,7 @@ contract BeaverRouter {
         address merchant,
         address newInitiator
     ) external returns (bool) {
-        address initiator = paymentInitiators[merchant];
+        address initiator = merchantSettings[merchant].initiator;
 
         require(
             msg.sender == initiator ||
@@ -296,7 +300,7 @@ contract BeaverRouter {
         );
 
         emit InitiatorChanged(merchant, newInitiator, initiator, msg.sender);
-        paymentInitiators[merchant] = newInitiator;
+        merchantSettings[merchant].initiator = newInitiator;
         return true;
     }
 
