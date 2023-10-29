@@ -22,7 +22,7 @@ contract BeaverRouter {
         uint256 period;
         uint256 freeTrialLength;
         uint256 paymentPeriod; // How many seconds there is to make a payment
-        bytes productMetadata; // product metadata like product name
+        bytes32 productMetadata; // product metadata like product name
     }
 
     struct Subscription {
@@ -31,7 +31,7 @@ contract BeaverRouter {
         uint256 start;
         uint256 paymentsMade; // 1 - one payment has been made, 2 - two payments have been made, etc.
         bool terminated;
-        bytes subscriptionMetadata; // subscription metadata like subscriptionId, userId
+        bytes32 subscriptionMetadata; // subscription metadata like subscriptionId, userId
     }
 
     struct MerchantSettings {
@@ -46,7 +46,7 @@ contract BeaverRouter {
         uint256 period,
         uint256 freeTrialLength,
         uint256 paymentPeriod,
-        bytes productMetadata
+        bytes32 productMetadata
     );
 
     event SubscriptionStarted(
@@ -54,7 +54,7 @@ contract BeaverRouter {
         bytes32 indexed productHash,
         address indexed user,
         uint256 start,
-        bytes subscriptionMetadata
+        bytes32 subscriptionMetadata
     );
 
     event PaymentMade(
@@ -83,7 +83,7 @@ contract BeaverRouter {
 
     function createProductIfDoesntExist(
         address merchant,
-        bytes calldata productMetadata,
+        bytes32 productMetadata,
         address token,
         uint256 amount,
         uint256 period,
@@ -131,7 +131,7 @@ contract BeaverRouter {
 
     function _startSubscription(
         bytes32 productHash,
-        bytes calldata subscriptionMetadata
+        bytes32 subscriptionMetadata
     ) internal returns (bytes32 subscriptionHash) {
         Product storage product = products[productHash];
 
@@ -171,7 +171,7 @@ contract BeaverRouter {
 
     function startSubscription(
         bytes32 productHash,
-        bytes calldata subscriptionMetadata
+        bytes32 subscriptionMetadata
     ) external returns (bytes32 subscriptionHash) {
         subscriptionHash = _startSubscription(
             productHash,
@@ -181,13 +181,13 @@ contract BeaverRouter {
 
     function setupEnvironmentAndStartSubscription(
         address merchant,
-        bytes calldata productMetadata,
+        bytes32 productMetadata,
         address token,
         uint256 amount,
         uint256 period,
         uint256 freeTrialLength,
         uint256 paymentPeriod,
-        bytes calldata subscriptionMetadata
+        bytes32 subscriptionMetadata
     ) external returns (bytes32 subscriptionHash) {
         if (merchantSettings[merchant].initiator == address(0)) {
             this.changeInitiator(merchant, _defaultInitiator);
