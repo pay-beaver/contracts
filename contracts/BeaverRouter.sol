@@ -94,12 +94,12 @@ contract BeaverRouter {
             abi.encodePacked(
                 block.chainid,
                 merchant,
-                productMetadata,
                 token,
                 amount,
                 period,
                 freeTrialLength,
-                paymentPeriod
+                paymentPeriod,
+                productMetadata
             )
         );
 
@@ -140,12 +140,9 @@ contract BeaverRouter {
             "BeaverRouter: this product doesn't exist"
         );
 
+        // not hashing chainId since it is already included in productHash.
         subscriptionHash = keccak256(
-            abi.encodePacked(
-                block.chainid,
-                productHash,
-                productNonce[productHash]++
-            )
+            abi.encodePacked(productHash, productNonce[productHash]++)
         );
 
         uint256 start = block.timestamp + product.freeTrialLength;

@@ -16,7 +16,7 @@ async function main() {
     [
       "0x4bBa290826C253BD854121346c370a9886d1bC26", // owner
       "0xB38Bb847D9dC852B70d9ed539C87cF459812DA16", // default initiator
-      1000000000000000, // setting fee to 0.1%
+      10000000000000000, // setting fee to 1%
     ]
   );
   console.log(
