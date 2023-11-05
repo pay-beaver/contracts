@@ -11,15 +11,10 @@ async function main() {
   console.log(
     `Working with signer: ${await owner.getAddress()}`
   );
-  const router = await hre.ethers.deployContract(
-    "BeaverRouter",
-    [
-      "0x4bBa290826C253BD854121346c370a9886d1bC26", // owner
-      "0xB38Bb847D9dC852B70d9ed539C87cF459812DA16", // default initiator
-    ]
-  );
+  const experiment =
+    await hre.ethers.deployContract("Experiment");
   console.log(
-    `Router deployed to: ${await router.getAddress()}`
+    `Experiment contract deployed to: ${await experiment.getAddress()}`
   );
 }
 
