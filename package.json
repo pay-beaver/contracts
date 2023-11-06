@@ -9,10 +9,13 @@
   "author": "nebolax",
   "license": "ISC",
   "devDependencies": {
+    "@nomicfoundation/hardhat-ethers": "^3.0.4",
     "@nomicfoundation/hardhat-toolbox": "^3.0.0",
     "@nomiclabs/hardhat-web3": "^2.0.0",
+    "ethers": "^6.8.1",
     "hardhat": "^2.18.2",
-    "web3": "^1.10.3"
+    "web3": "^1.10.3",
+    "xdeployer": "^2.1.13"
   },
   "dependencies": {
     "@account-abstraction/contracts": "^0.6.0",
