@@ -216,7 +216,7 @@ contract BeaverRouter {
         bytes32 subscriptionHash,
         uint256 compensation
     ) external returns (uint48) {
-        require(_owner != address(0), "BR: router is frozen");
+        require(!_frozen, "BR: router is frozen");
 
         Subscription storage sub = subscriptions[subscriptionHash];
         Product storage product = products[sub.productHash];
