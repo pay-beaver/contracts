@@ -13,21 +13,23 @@ contract BeaverRouter {
         _defaultInitiator = defaultInitiator;
     }
 
+    // It's ugly, but the order of variables in the Product struct doesn't match
+    // the order in other places, because we pack the variables here.
     struct Product {
-        address merchant;
-        address token;
         uint256 amount;
-        uint256 period;
-        uint256 freeTrialLength;
-        uint256 paymentPeriod; // How many seconds there is to make a payment
+        address token;
+        uint40 period;
+        uint40 freeTrialLength;
+        uint40 paymentPeriod; // How many seconds there is to make a payment
+        address merchant;
         bytes32 productMetadata; // product metadata like product name
     }
 
     struct Subscription {
         bytes32 productHash;
         address user;
-        uint256 start;
-        uint256 paymentsMade; // 1 - one payment has been made, 2 - two payments have been made, etc.
+        uint40 start;
+        uint48 paymentsMade; // 1 - one payment has been made, 2 - two payments have been made, etc.
         bool terminated;
         bytes32 subscriptionMetadata; // subscription metadata like subscriptionId, userId
     }
@@ -72,19 +74,26 @@ contract BeaverRouter {
         address changedBy
     );
 
+    event OwnerChanged(address indexed newOwner, address indexed oldOwner);
+
+    event DefaultInitiatorChanged(
+        address indexed newDefaultInitiator,
+        address indexed oldDefaultInitiator
+    );
+
     mapping(bytes32 => Product) public products;
     mapping(bytes32 => Subscription) public subscriptions;
-    mapping(bytes32 => uint64) public productNonce; // uint64 is the same as Ethereum's nonce for transactions
+    mapping(bytes32 => uint256) public productNonce;
     mapping(address => MerchantSettings) public merchantSettings;
 
     function createProductIfDoesntExist(
         address merchant,
-        bytes32 productMetadata,
         address token,
         uint256 amount,
-        uint256 period,
-        uint256 freeTrialLength,
-        uint256 paymentPeriod
+        uint40 period,
+        uint40 freeTrialLength,
+        uint40 paymentPeriod,
+        bytes32 productMetadata
     ) external returns (bytes32 productHash) {
         productHash = keccak256(
             abi.encodePacked(
@@ -103,15 +112,16 @@ contract BeaverRouter {
             return productHash; // product already exists
         }
 
-        products[productHash] = Product(
-            merchant,
-            token,
-            amount,
-            period,
-            freeTrialLength,
-            paymentPeriod,
-            productMetadata
-        );
+        // ATTENTION: order of variables here is not usual as we pack them in Product tightly.
+        products[productHash] = Product({
+            merchant: merchant,
+            token: token,
+            amount: amount,
+            period: period,
+            freeTrialLength: freeTrialLength,
+            paymentPeriod: paymentPeriod,
+            productMetadata: productMetadata
+        });
 
         emit ProductCreated(
             productHash,
@@ -131,10 +141,7 @@ contract BeaverRouter {
     ) internal returns (bytes32 subscriptionHash) {
         Product storage product = products[productHash];
 
-        require(
-            product.merchant != address(0),
-            "BeaverRouter: this product doesn't exist"
-        );
+        require(product.merchant != address(0), "BR: product does not exist");
 
         // not hashing chainId since it is already included in productHash.
         subscriptionHash = keccak256(
@@ -142,14 +149,14 @@ contract BeaverRouter {
         );
 
         uint256 start = block.timestamp + product.freeTrialLength;
-        subscriptions[subscriptionHash] = Subscription(
-            productHash,
-            msg.sender,
-            start,
-            0,
-            false,
-            subscriptionMetadata
-        );
+        subscriptions[subscriptionHash] = Subscription({
+            productHash: productHash,
+            user: msg.sender,
+            start: uint40(start),
+            paymentsMade: 0,
+            terminated: false,
+            subscriptionMetadata: subscriptionMetadata
+        });
 
         emit SubscriptionStarted(
             subscriptionHash,
@@ -174,12 +181,12 @@ contract BeaverRouter {
 
     function setupEnvironmentAndStartSubscription(
         address merchant,
-        bytes32 productMetadata,
         address token,
         uint256 amount,
-        uint256 period,
-        uint256 freeTrialLength,
-        uint256 paymentPeriod,
+        uint40 period,
+        uint40 freeTrialLength,
+        uint40 paymentPeriod,
+        bytes32 productMetadata,
         bytes32 subscriptionMetadata
     ) external returns (bytes32 subscriptionHash) {
         if (merchantSettings[merchant].initiator == address(0)) {
@@ -188,12 +195,12 @@ contract BeaverRouter {
 
         bytes32 productHash = this.createProductIfDoesntExist(
             merchant,
-            productMetadata,
             token,
             amount,
             period,
             freeTrialLength,
-            paymentPeriod
+            paymentPeriod,
+            productMetadata
         );
 
         subscriptionHash = _startSubscription(
@@ -212,13 +219,10 @@ contract BeaverRouter {
 
         require(
             msg.sender == address(this) || msg.sender == initiator,
-            "BeaverRouter: only initiator is allowed to initiate payments"
+            "BR: not permitted"
         );
 
-        require(
-            !sub.terminated,
-            "BeaverRouter: subscription has been terminated"
-        );
+        require(!sub.terminated, "BR: subscription is terminated");
 
         uint256 paymentTimestamp = sub.start +
             sub.paymentsMade *
@@ -226,18 +230,16 @@ contract BeaverRouter {
 
         require(
             block.timestamp >= paymentTimestamp,
-            "BeaverRouter: too early to make payment"
+            "BR: too early to make payment"
         );
 
         require(
             block.timestamp < paymentTimestamp + product.paymentPeriod,
-            "BeaverRouter: subscription has expired"
+            "BR: subscription has expired"
         );
 
-        require(
-            compensation < product.amount, // prevent initiators from making the compensation too high
-            "BeaverRouter: too high compensation"
-        );
+        // prevent initiators from making the compensation too high
+        require(compensation < product.amount, "BR: too high compensation");
 
         uint256 toMerchant = product.amount - compensation;
 
@@ -246,7 +248,14 @@ contract BeaverRouter {
             product.merchant,
             toMerchant
         );
-        IERC20(product.token).transferFrom(sub.user, initiator, compensation);
+
+        if (compensation > 0) {
+            IERC20(product.token).transferFrom(
+                sub.user,
+                initiator,
+                compensation
+            );
+        }
 
         sub.paymentsMade += 1;
         emit PaymentMade(subscriptionHash, sub.paymentsMade);
@@ -261,7 +270,7 @@ contract BeaverRouter {
 
         require(
             msg.sender == sub.user || msg.sender == product.merchant,
-            "BeaverRouter: only the user and the merchant can terminate the subscription"
+            "BR: not permitted"
         );
 
         sub.terminated = true;
@@ -279,7 +288,7 @@ contract BeaverRouter {
             msg.sender == initiator ||
                 msg.sender == merchant ||
                 (initiator == address(0) && newInitiator == _defaultInitiator),
-            "BeaverRouter: only current initiator and merchant are allowed to change initiator."
+            "BR: not permitted"
         );
 
         emit InitiatorChanged(merchant, newInitiator, initiator, msg.sender);
@@ -288,26 +297,22 @@ contract BeaverRouter {
     }
 
     function changeOwner(address newOwner) external returns (bool) {
-        require(
-            msg.sender == _owner,
-            "BeaverRouter: only owner can change the owner"
-        );
+        require(msg.sender == _owner, "BR: not permitted");
+
+        emit OwnerChanged(newOwner, _owner);
 
         _owner = newOwner;
-
         return true;
     }
 
     function changeDefaultInitiator(
         address newDefaultInitiator
     ) external returns (bool) {
-        require(
-            msg.sender == _owner,
-            "BeaverRouter: only owner can change the default initiator"
-        );
+        require(msg.sender == _owner, "BR: not permitted");
+
+        emit DefaultInitiatorChanged(newDefaultInitiator, _defaultInitiator);
 
         _defaultInitiator = newDefaultInitiator;
-
         return true;
     }
 }

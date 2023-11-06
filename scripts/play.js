@@ -7,37 +7,57 @@
 const hre = require("hardhat");
 
 async function main() {
-  let [owner, randomSigner] =
+  let [owner, randomSigner, randomSigner2] =
     await hre.ethers.getSigners();
   console.log(
     `Working with signer: ${await owner.getAddress()}`
   );
   console.log(
-    "RandomSigner address is:",
-    randomSigner.address
+    "RandomSigner addresses are:",
+    randomSigner.address,
+    randomSigner2.address
   );
 
   const router = await hre.ethers.getContractAt(
     "BeaverRouter",
-    "0xc824Cb40e4253Ae1A7C024eFc20eD9f788645b9a"
+    "0x6A490220ee1CcD1A96121EA326c00346b3dEc3Df"
   );
-  await router.createProductAndStartSubscription(
-    "0x34207C538E39F2600FE672bB84A90efF190ae4C7", // merchant
-    "0x9f0ef6bd5c94780edaa0abbc62a04457d2554aa04d1087b6250d901ca201c4d2", // metadata
-    "0x6B175474E89094C44Da98b954EedeAC495271d0F", // token (DAI)
-    1000000, // amount
-    10, // period
-    0, // freeTrialLength
-    1000000000, // paymentPeriod
-    randomSigner.address // initiator
-  );
+  // await router.setupEnvironmentAndStartSubscription(
+  //   randomSigner2.address, // merchant
+  //   "0x87A94DC5556D5EBFe5728BA2b09382382a9f8aEf", // token (ND Coin)
+  //   1000000, // amount
+  //   10, // period
+  //   1, // freeTrialLength
+  //   1000000000, // paymentPeriod
+  //   "0x9f0ef6bd5c94780edaa0abbc62a04457d2554aa04d1087b6250d901ca201c4d2", // productMetadata,
+  //   "0x455e4d92c5de1bb7bcf28c4768d4d9e1d076b69a980d3db2870558985a03be5c" // subscriptionMetadata
+  // );
   // await router.startSubscription(
   //   "0x32818596df7f72d79690bc1d10d2a727947cda1a59e77550ed4c28f0b81ba0f2", // productHash
   //   "0xB38Bb847D9dC852B70d9ed539C87cF459812DA16" // initiator
   // );
-  // await router.makePayment(
-  //   "0x9e08d57d342df9be7043b80b0ab887697d4f48eddd3531448e983b8b059b2c18", //subscriptionHash
-  //   100000 // compensation
+  // await router
+  //   .connect(randomSigner2)
+  //   .changeInitiator(
+  //     randomSigner2.address,
+  //     randomSigner.address
+  //   );
+  const subscriptionData =
+    await router.subscriptions(
+      "0x66b10fd144f53e62142e96ccbf5d46883d90f4744454930ec09f5cd74cf391e3"
+    );
+  console.log(
+    "subscriptionData",
+    subscriptionData
+  );
+  // const initiator = await router.merchantSettings[]
+
+  await router.connect(randomSigner).makePayment(
+    "0x66b10fd144f53e62142e96ccbf5d46883d90f4744454930ec09f5cd74cf391e3", //subscriptionHash
+    1000 // compensation
+  );
+  // await router.terminateSubscription(
+  //   "0x0743bca3bd578c952076b2fb7aa6ed9e580d15d58f71909ed406a5cba3b9de41"
   // );
 }
 

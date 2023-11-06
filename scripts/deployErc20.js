@@ -20,16 +20,16 @@ async function main() {
     `NDCoin deployed to: ${await ndCoin.getAddress()}`
   );
 
-  const ndCoin = await hre.ethers.getContractAt(
-    "NDCoinERC20",
-    "0xc824Cb40e4253Ae1A7C024eFc20eD9f788645b9a",
-    owner
-  );
-
-  // ndCoin.approve(
-  //   "0xc824Cb40e4253Ae1A7C024eFc20eD9f788645b9a", // router
-  //   500000000000 // amount
+  // const ndCoin = await hre.ethers.getContractAt(
+  //   "NDCoinERC20",
+  //   "0xc824Cb40e4253Ae1A7C024eFc20eD9f788645b9a",
+  //   owner
   // );
+
+  ndCoin.approve(
+    "0x6A490220ee1CcD1A96121EA326c00346b3dEc3Df", // router
+    500000000000 // amount
+  );
 }
 
 // We recommend this pattern to be able to use async/await everywhere

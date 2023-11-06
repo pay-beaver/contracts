@@ -9,10 +9,11 @@ module.exports = {
       chainId: 80001,
     },
     tenderly: {
-      url: "https://rpc.vnet.tenderly.co/devnet/beaver-router/157ddae0-7367-41d5-9230-bc957c02af5c",
+      url: "https://rpc.vnet.tenderly.co/devnet/beaver-router/4899271c-bd3c-44e7-97ab-893ca2f317bb",
       accounts: [
         `0x${process.env.DEPLOYER_PRIVATE_KEY}`,
         `0x${process.env.RANDOM_PRIVATE_KEY}`,
+        `0x${process.env.RANDOM_PRIVATE_KEY_2}`,
       ],
     },
     sepolia: {
