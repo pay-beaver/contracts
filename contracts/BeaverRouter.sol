@@ -144,7 +144,7 @@ contract BeaverRouter {
     ) internal returns (bytes32 subscriptionHash) {
         Product storage product = products[productHash];
 
-        require(!_frozen, "BR: product does not exist");
+        require(product.merchant != address(0), "BR: product does not exist");
 
         // not hashing chainId since it is already included in productHash.
         subscriptionHash = keccak256(
