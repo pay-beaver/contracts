@@ -215,7 +215,7 @@ contract BeaverRouter {
     function makePayment(
         bytes32 subscriptionHash,
         uint256 compensation
-    ) external returns (bool) {
+    ) external returns (uint48) {
         require(_owner != address(0), "BR: router is frozen");
 
         Subscription storage sub = subscriptions[subscriptionHash];
@@ -264,12 +264,11 @@ contract BeaverRouter {
 
         sub.paymentsMade += 1;
         emit PaymentMade(subscriptionHash, sub.paymentsMade);
-        return true;
+
+        return sub.paymentsMade;
     }
 
-    function terminateSubscription(
-        bytes32 subscriptionHash
-    ) external returns (bool) {
+    function terminateSubscription(bytes32 subscriptionHash) external {
         Subscription storage sub = subscriptions[subscriptionHash];
         Product storage product = products[sub.productHash];
 
@@ -280,13 +279,9 @@ contract BeaverRouter {
 
         sub.terminated = true;
         emit SubscriptionTerminated(subscriptionHash, msg.sender);
-        return true;
     }
 
-    function changeInitiator(
-        address merchant,
-        address newInitiator
-    ) external returns (bool) {
+    function changeInitiator(address merchant, address newInitiator) external {
         address initiator = merchantSettings[merchant].initiator;
 
         require(
@@ -298,44 +293,37 @@ contract BeaverRouter {
 
         emit InitiatorChanged(merchant, newInitiator, initiator, msg.sender);
         merchantSettings[merchant].initiator = newInitiator;
-        return true;
     }
 
-    function changeOwner(address newOwner) external returns (bool) {
+    function changeOwner(address newOwner) external {
         require(msg.sender == _owner, "BR: not permitted");
 
         emit OwnerChanged(newOwner, _owner);
 
         _owner = newOwner;
-        return true;
     }
 
-    function freeze() external returns (bool) {
+    function freeze() external {
         require(msg.sender == _owner, "BR: not permitted");
 
         emit Froze();
 
         _frozen = true;
-        return true;
     }
 
-    function unfreeze() external returns (bool) {
+    function unfreeze() external {
         require(msg.sender == _owner, "BR: not permitted");
 
         emit Unfroze();
 
         _frozen = false;
-        return true;
     }
 
-    function changeDefaultInitiator(
-        address newDefaultInitiator
-    ) external returns (bool) {
+    function changeDefaultInitiator(address newDefaultInitiator) external {
         require(msg.sender == _owner, "BR: not permitted");
 
         emit DefaultInitiatorChanged(newDefaultInitiator, _defaultInitiator);
 
         _defaultInitiator = newDefaultInitiator;
-        return true;
     }
 }
