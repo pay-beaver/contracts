@@ -16,6 +16,15 @@ async function main() {
   console.log(
     `Experiment contract deployed to: ${await experiment.getAddress()}`
   );
+
+  // const experiment =
+  //   await hre.ethers.getContractAt(
+  //     "Experiment",
+  //     "0xc824Cb40e4253Ae1A7C024eFc20eD9f788645b9a"
+  //   );
+
+  experiment.setAB(3, 4);
+  experiment.setLol(true);
 }
 
 // We recommend this pattern to be able to use async/await everywhere

@@ -3,13 +3,18 @@
 pragma solidity ^0.8.19;
 
 contract Experiment {
-    uint256 a;
-    uint256 b;
+    bool lol;
+    uint128 a;
+    uint128 b;
 
-    function setAB(uint256 newA, uint256 newB) external returns (bool) {
+    function setAB(uint128 newA, uint128 newB) external returns (bool) {
         a = newA;
         b = newB;
 
         return true;
+    }
+
+    function setLol(bool newLol) external {
+        lol = newLol;
     }
 }
